@@ -135,7 +135,7 @@ async function id(cardsArray) {
             const stream_id = url.substring(url.lastIndexOf('/') + 1);
             const card = { tmdb_id, stream_id };
             cards.push(card);
-            await timer(500);
+            await timer(700);
             // console.log(card);
         }
         console.log("SCRAPING COMPLETED");
