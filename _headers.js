@@ -41,8 +41,9 @@ const config_with_proxy = {
         'upgrade-insecure-requests': '1',
         'user-agent': ''
     },
+    timeout: 1200,
     validateStatus: function (status) {
-        return status = 404; // default
+        return status == 404 || status == 301; // default
     },
     proxy: false,
     httpsAgent: new HttpsProxyAgent.HttpsProxyAgent(`http://<USERNAME>-rotate:<password>@p.webshare.io:80`)

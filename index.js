@@ -4,13 +4,17 @@ const cheerio = require("cheerio");
 const mongoose = require('mongoose');
 const randomUseragent = require('random-useragent');
 const Tvshow = require("./model/tvshows");
+const Manual_Entry = require('./model/manual_entries');
 const _headers = require ('./_headers');
+const ID_With_Error = require('./model/id_with_errors');
 
 const authority = process.env.AUTHORITY;
 const referer = process.env.REFERER
 const domain = process.env.DOMAIN;
 const url = process.env.URL;
 const DB = process.env.MONGODB;
+
+const backup = [];
 
 async function headers() {
     const config = _headers.config_0;
@@ -37,7 +41,7 @@ async function paginationArr() {
             pages.push(page_url);
         }
         console.log("PAGINATION DONE");
-        console.log("GETTING PAGE CHUNK...");
+        console.log("GETTING PAGE CHUNK>>>>>>");
         return pages;
     }
     catch (error) {
@@ -89,7 +93,7 @@ async function pagination_chunk(chunks, n) {
     const chunk = chunks[n];
     // const sliced = chunk.slice(0, 1);
     console.log("DONE");
-    console.log("PROCESSING CARDS LINK....");
+    console.log("PROCESSING CARDS LINK>>>>>>>>");
     return chunk;
 };
 
@@ -106,11 +110,10 @@ async function cards_link(paginationArray) {
             $(".flw-item").map( (i, element) => {
                 const film = $(element).find(".film-poster");
                 const id = $(film).find("a").attr("href");
-                const link =`${domain}` + `${id}`;
-                pages.push(link);
+                pages.push(id);
                 }).get();
         }
-        console.log(pages.length+" "+"ID TO PROCESS");
+        console.log(pages.length+" "+"IDS TO PROCESS");
         return pages;
     }
     catch (error) {
@@ -118,16 +121,37 @@ async function cards_link(paginationArray) {
     }
 };
 
-async function id(cardsArray) {
+async function VerifyIfCardsinDB(cardsArray, n) {
+    try {
+        const cards = [];
+        const clean = (cardsArray || []).map(async card => {
+            const cardsFromDb = await Tvshow.findOne({ stream_id: card.substring(n) });
+            const id_with_error = await ID_With_Error.findOne({ stream_id: card.substring(n) });
+            if (!cardsFromDb && !id_with_error) {
+                const link = `${domain}` + `${card}`;
+                cards.push(link)
+            }
+        });
+        await Promise.all(clean);
+        console.log(cards.length+" "+"IDS TO ADD TO DB");
+        console.log("GETTING IDS>>>>>>>>")
+        return cards
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+
+async function id(verifiedCards) {
     try {
         const timer = ms => new Promise(res => setTimeout(res, ms))
         const cards = [];
-        for(i = 0; i < cardsArray.length; i++) {
+        for(i = 0; i < verifiedCards.length; i++) {
             const config = await headers();
             const useragent = randomUseragent.getRandom(function (ua) {
                 return ua.browserName === 'Chrome';});
             config.headers['user-agent'] = useragent;
-            const pageHTML = await axios.get(cardsArray[i], config);
+            const pageHTML = await axios.get(verifiedCards[i], config);
             if (!pageHTML.data.includes("container-404 text-center")) {
                 const $ = cheerio.load(pageHTML.data);
                 const tmdb_id = $(".watching_player-area").attr("data-tmdb-id");
@@ -138,6 +162,10 @@ async function id(cardsArray) {
                 cards.push(card);
                 await timer(700);
                 // console.log(card);
+            }
+            else {
+                const link = { Link: cardsArray[i] }
+                backup.push(link);
             }
         }
         console.log("SCRAPING COMPLETED");
@@ -169,6 +197,26 @@ async function insertCardsInMongoDb(ids_full) {
     }
 };
 
+async function insertLinkWithError() {
+    try {
+        const cards = [];
+        const promises = (backup || []).map(async card => {
+        const cardsFromDb = await Manual_Entry.findOne({ Link: card.Link });
+        if (!cardsFromDb) {
+            const newCard = new Manual_Entry(card);
+            cards.push(card);
+            // console.log(card);
+            return newCard.save();
+        }
+        });
+        await Promise.all(promises);
+        console.log(cards.length+" "+"ID SAVE TO ADD MANUALLY");
+    }
+    catch (error) {
+        console.log(error);
+    }
+};
+
 async function main() {
     try {
         const date = new Date();
@@ -178,11 +226,13 @@ async function main() {
             console.log("CONNECTED TO MONGODB");
         });
         const pagination = await paginationArr();
-        const chunks = await chunkify(pagination, 4, true);
-        const paginationArray = await pagination_chunk(chunks, 0);
+        const chunks = await chunkify(pagination, 4, true);//(pagination, NumberofArray, balanced)
+        const paginationArray = await pagination_chunk(chunks, 0);//CHUNK NUMBER 0 = 1
         const cardsArray = await cards_link(paginationArray);
-        const ids_full = await id(cardsArray);
+        const verifiedCards = await VerifyIfCardsinDB(cardsArray, 4)//IF MOVIE=>(CardsArray, 7) IF TV=>(CardsArray, 4)
+        const ids_full = await id(verifiedCards);
         await insertCardsInMongoDb(ids_full);
+        await insertLinkWithError();
         mongoose.disconnect(function(){
             console.log("SUCCESSFULLY DISCONNECTED FROM MONGODB!");
         });
