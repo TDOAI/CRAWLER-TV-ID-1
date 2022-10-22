@@ -24,6 +24,9 @@ async function headers() {
 
 async function paginationArr() {
     try {
+        mongoose.connect(DB, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true }, function(){
+            console.log("CONNECTED TO MONGODB");
+        });
         const config = await headers();
         const useragent = randomUseragent.getRandom(function (ua) {
             return ua.browserName === 'Chrome';});
@@ -220,9 +223,6 @@ async function main() {
         const date = new Date();
         const time = date.toUTCString();
         console.log(time);
-        await mongoose.connect(DB, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true }, function(){
-            console.log("CONNECTED TO MONGODB");
-        });
         const pagination = await paginationArr();
         const chunks = await chunkify(pagination, 4, true);//(pagination, NumberofArray, balanced)
         const paginationArray = await pagination_chunk(chunks, 0);//CHUNK NUMBER 0 = 1
