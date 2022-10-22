@@ -18,8 +18,10 @@ const config_0 = {
         'upgrade-insecure-requests': '1',
         'user-agent': ''
     },
+    timeout: 5000,
+    maxRedirects: 0,
     validateStatus: function (status) {
-        return status = 404; // default
+        return status = 404 || status == 301; // default
     }
 };
 
@@ -41,7 +43,8 @@ const config_with_proxy = {
         'upgrade-insecure-requests': '1',
         'user-agent': ''
     },
-    timeout: 1200,
+    timeout: 5000,
+    maxRedirects: 0,
     validateStatus: function (status) {
         return status == 404 || status == 301; // default
     },

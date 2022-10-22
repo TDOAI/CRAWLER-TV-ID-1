@@ -6,7 +6,6 @@ const randomUseragent = require('random-useragent');
 const Tvshow = require("./model/tvshows");
 const Manual_Entry = require('./model/manual_entries');
 const _headers = require ('./_headers');
-const ID_With_Error = require('./model/id_with_errors');
 
 const authority = process.env.AUTHORITY;
 const referer = process.env.REFERER
@@ -126,8 +125,7 @@ async function VerifyIfCardsinDB(cardsArray, n) {
         const cards = [];
         const clean = (cardsArray || []).map(async card => {
             const cardsFromDb = await Tvshow.findOne({ stream_id: card.substring(n) });
-            const id_with_error = await ID_With_Error.findOne({ stream_id: card.substring(n) });
-            if (!cardsFromDb && !id_with_error) {
+            if (!cardsFromDb) {
                 const link = `${domain}` + `${card}`;
                 cards.push(link)
             }
@@ -152,7 +150,7 @@ async function id(verifiedCards) {
                 return ua.browserName === 'Chrome';});
             config.headers['user-agent'] = useragent;
             const pageHTML = await axios.get(verifiedCards[i], config);
-            if (!pageHTML.data.includes("container-404 text-center")) {
+            if (!pageHTML.data.includes("container-404 text-center") && !pageHTML.data.includes("Moved Permanently. Redirecting to")) {
                 const $ = cheerio.load(pageHTML.data);
                 const tmdb_id = $(".watching_player-area").attr("data-tmdb-id");
                 const url_path = $("head > meta:nth-child(11)");
@@ -164,7 +162,7 @@ async function id(verifiedCards) {
                 // console.log(card);
             }
             else {
-                const link = { Link: cardsArray[i] }
+                const link = { Link: verifiedCards[i] }
                 backup.push(link);
             }
         }
@@ -229,7 +227,7 @@ async function main() {
         const chunks = await chunkify(pagination, 4, true);//(pagination, NumberofArray, balanced)
         const paginationArray = await pagination_chunk(chunks, 0);//CHUNK NUMBER 0 = 1
         const cardsArray = await cards_link(paginationArray);
-        const verifiedCards = await VerifyIfCardsinDB(cardsArray, 4)//IF MOVIE=>(CardsArray, 7) IF TV=>(CardsArray, 4)
+        const verifiedCards = await VerifyIfCardsinDB(cardsArray, 4);//IF MOVIE=>(CardsArray, 7) IF TV=>(CardsArray, 4)
         const ids_full = await id(verifiedCards);
         await insertCardsInMongoDb(ids_full);
         await insertLinkWithError();
