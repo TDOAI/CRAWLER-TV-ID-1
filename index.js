@@ -128,7 +128,7 @@ async function id(cardsArray) {
                 return ua.browserName === 'Chrome';});
             config.headers['user-agent'] = useragent;
             const pageHTML = await axios.get(cardsArray[i], config);
-            if (!page_1.data.includes("container-404 text-center")) {
+            if (!pageHTML.data.includes("container-404 text-center")) {
                 const $ = cheerio.load(pageHTML.data);
                 const tmdb_id = $(".watching_player-area").attr("data-tmdb-id");
                 const url_path = $("head > meta:nth-child(11)");
