@@ -205,7 +205,7 @@ async function insertLinkWithError() {
             const link = await card.Link;
             const format = await link.substring(link.lastIndexOf('/') + 1);
             const cardsFromDbManual = await Manual_Entry.findOne({ Link: card.Link });
-            const cardsFromDb = await Movie.findOne({ stream_id: format });
+            const cardsFromDb = await Tvshow.findOne({ stream_id: format });
             if (!cardsFromDb && !cardsFromDbManual) {
                 const newCard = new Manual_Entry(card);
                 cards.push(card);
