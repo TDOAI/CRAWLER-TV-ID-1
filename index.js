@@ -198,7 +198,7 @@ async function insertCardsInMongoDb(ids_full) {
     }
 };
 
-async function insertLinkWithError(n) {
+async function insertLinkWithError() {
     try {
         const cards = [];
         const promises = (backup || []).map(async card => {
@@ -233,7 +233,7 @@ async function main() {
         const verifiedCards = await VerifyIfCardsinDB(cardsArray, 4);//IF MOVIE=>(CardsArray, 7) IF TV=>(CardsArray, 4)
         const ids_full = await id(verifiedCards);
         await insertCardsInMongoDb(ids_full);
-        await insertLinkWithError();//IF MOVIE=>n=(7) IF TV=>n=(4)
+        await insertLinkWithError();
         mongoose.disconnect(function(){
             console.log("SUCCESSFULLY DISCONNECTED FROM MONGODB!");
         });
